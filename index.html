@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>WeBlog — All-in-One Social & Media</title>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPkFB7gDfNbl04ZjrTraBQNB3A-nEygwA",
+    authDomain: "weblog-38b6f.firebaseapp.com",
+    projectId: "weblog-38b6f",
+    storageBucket: "weblog-38b6f.firebasestorage.app",
+    messagingSenderId: "1074651022181",
+    appId: "1:1074651022181:web:a698cdb355ad410c18578c",
+    measurementId: "G-PQ8TMR13SH"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  window.loginWithGoogle = () => {
+    signInWithPopup(auth, provider)
+      .then(result => {
+        const user = result.user;
+        document.getElementById('auth-area').innerHTML = `<span>Hello, ${user.displayName}</span> <button class="btn" onclick="logout()">Logout</button>`;
+        document.getElementById('me-avatar').innerText = user.displayName[0].toUpperCase();
+      }).catch(err => alert(err.message));
+  };
+
+  window.logout = () => { signOut(auth).then(()=> location.reload()); };
+</script>
+
+<style>
+:root{--primary:#0078ff;--bg:#f3f6fb;--card:#fff;--text:#0b1220;--muted:#6b7280;--radius:12px}
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:var(--bg);color:var(--text)}
+.container{max-width:1100px;margin:20px auto;padding:18px;background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#06b6d4);color:white;display:flex;align-items:center;justify-content:center;font-weight:700}
+h1{margin:0;font-size:20px}
+.meta{font-size:12px;color:var(--muted)}
+.top-actions{display:flex;gap:8px;align-items:center}
+.btn{background:var(--primary);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+.layout{display:grid;grid-template-columns:260px 1fr 300px;gap:16px;margin-top:18px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+.card{background:var(--card);padding:12px;border-radius:12px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.nav button{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.nav button.active{background:rgba(0,0,0,0.04);color:var(--text)}
+.avatar{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,0.04);font-size:13px}
+.composer textarea{width:100%;min-height:80px;border-radius:10px;padding:10px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:inherit}
+.post{border-radius:12px;padding:12px;margin-top:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent)}
+.media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.media-grid img{width:100%;border-radius:8px;object-fit:cover;height:100px}
+.movies-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.movie-thumb{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;background:#111;color:white}
+.movie-thumb img{width:100%;height:115px;object-fit:cover;display:block}
+.movie-thumb .info{padding:8px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));position:absolute;left:0;right:0;bottom:0}
+.movie-title{font-weight:700;font-size:14px}
+.movie-sub{font-size:12px;color:rgba(255,255,255,0.8)}
+.right-sidebar{display:flex;flex-direction:column;gap:12px}
+.small{font-size:13px;color:var(--muted)}
+.btn-small{padding:6px 10px;border-radius:8px}
+.modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);justify-content:center;align-items:center}
+.modal-content{position:relative;width:90%;max-width:800px;background:#000;border-radius:12px;overflow:hidden}
+.modal-content iframe{width:100%;height:450px;border:0}
+.modal-close{position:absolute;top:10px;right:10px;background:transparent;color:#fff;font-size:20px;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">W</div>
+      <div>
+        <h1>WeBlog</h1>
+        <div class="meta">Created by <strong>Akin S. Sokpah</strong> — Born Feb 25, 2007</div>
+      </div>
+    </div>
+    <div class="top-actions" id="auth-area">
+      <button class="btn" onclick="loginWithGoogle()">Login with Google</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="avatar" id="founder-avatar">AS</div>
+        <div>
+          <div id="founder-name">Akin S. Sokpah</div>
+          <div class="small">Founder</div>
+        </div>
+      </div>
+      <hr/>
+      <div class="small">Weather</div>
+      <div id="weather-box" class="card">Loading weather...</div>
+      <div class="small">Football</div>
+      <div id="football-box" class="card">Loading matches...</div>
+      <div class="small">Quick Access</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <a class="pill" href="https://facebook.com" target="_blank"><i class="fa-brands fa-facebook"></i> FB</a>
+        <a class="pill" href="https://youtube.com" target="_blank"><i class="fa-brands fa-youtube"></i> YT</a>
+        <a class="pill" href="https://tiktok.com" target="_blank"><i class="fa-brands fa-tiktok"></i> TT</a>
+        <a class="pill" href="https://instagram.com" target="_blank"><i class="fa-brands fa-instagram"></i> IG</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main>
+      <!-- FEED PANEL -->
+      <section id="panel-feed" class="card">
+        <h2>Home Feed</h2>
+        <div class="composer">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div class="avatar" id="me-avatar">U</div>
+            <div style="flex:1">
+              <textarea id="composer-text" placeholder="Share a thought, link or YouTube (paste URL)"></textarea>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                <input id="composer-media" placeholder="Optional image/video URL" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+                <button class="btn" onclick="createPost()">Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="posts-area" style="margin-top:12px"></div>
+      </section>
+      
+      <!-- MOVIES PANEL -->
+      <section id="panel-movies" class="card">
+        <h2>Movie Box</h2>
+        <input id="movie-search" placeholder="Search movies..." style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);margin-bottom:12px" oninput="renderMovies()" />
+        <div class="movies-grid" id="movies-grid"></div>
+      </section>
+
+      <!-- MODAL -->
+      <div class="modal" id="movie-modal">
+        <div class="modal-content">
+          <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+          <iframe id="modal-iframe" src="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <div style="padding:8px;color:white">
+            <button class="btn-small btn" onclick="addToWatchlist(currentMovie)">Add to Watchlist</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONETIZATION -->
+      <section class="card">
+        <h2>Monetize</h2>
+        <button class="btn btn-small">Subscribe Monthly $5</button>
+        <button class="btn btn-small">Subscribe Yearly $50</button>
+      </section>
+
+      <!-- INVITES -->
+      <section class="card">
+        <h2>Invite Friends</h2>
+        <input id="invite-input" placeholder="Email or Phone" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+        <button class="btn btn-small" onclick="sendInvite()">Send Invite</button>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ---------- WEATHER ---------- */
+const weatherBox = document.getElementById('weather-box');
+const WEATHER_API_KEY = '1d9f2c9c33d46a7fdcd720b28a799207';
+function fetchWeather(){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`)
+      .then(r=>r.json())
+      .then(data=>weatherBox.innerHTML=`${data.name}: ${data.weather[0].description}, ${data.main.temp}°C`)
+      .catch(e=>weatherBox.innerHTML='Weather unavailable');
+  }, ()=>weatherBox.innerHTML='Location not allowed');
+}
+fetchWeather();
+
+/* ---------- FOOTBALL ---------- */
+const footballBox = document.getElementById('football-box');
+footballBox.innerHTML='Live football matches coming soon!';
+
+/* ---------- POSTS ---------- */
+function createPost(){
+  const text = document.getElementById('composer-text').value;
+  const media = document.getElementById('composer-media').value;
+  if(!text && !media) return alert('Add text or media');
+  const postArea = document.getElementById('posts-area');
+  const div = document.createElement('div'); div.className='post';
+  div.innerHTML=`<div><strong>You</strong></div><div>${text}</div>${media?'<img src="'+media+'" style="width:100%;border-radius:8px;margin-top:8px"/>':''}`;
+  postArea.prepend(div);
+  document.getElementById('composer-text').value='';
+  document.getElementById('composer-media').value='';
+}
+
+/* ---------- MOVIES ---------- */
+const MOVIES = [
+  {title:'Action Thriller', yt:'https://www.youtube.com/embed/ysz5S6PUM-U'},
+  {title:'Sci-Fi Epic', yt:'https://www.youtube.com/embed/2Vv-BfVoq4g'},
+  {title:'Romantic Drama', yt:'https://www.youtube.com/embed/5qap5aO4i9A'}
+];
+let currentMovie = null;
+let watchlist = JSON.parse(localStorage.getItem('weblog_watchlist')||'[]');
+function renderMovies(){
+  const query = document.getElementById('movie-search').value.toLowerCase();
+  const grid = document.getElementById('movies-grid'); grid.innerHTML='';
+  MOVIES.filter(m=>m.title.toLowerCase().includes(query)).forEach(m=>{
+    const div = document.createElement('div'); div.className='movie-thumb';
+    div.innerHTML=`<img src="https://placehold.co/400x225/111827/ffffff?text=${encodeURIComponent(m.title)}">
+      <div class="info"><div class="movie-title">${m.title}</div></div>`;
+    div.onclick=()=>openModal(m);
+    grid.appendChild(div);
+  });
+}
+function openModal(movie){
+  currentMovie = movie;
+  document.getElementById('modal-iframe').src = movie.yt+'?autoplay=1';
+  document.getElementById('movie-modal').style.display='flex';
+}
+function closeModal(){ document.getElementById('movie-modal').style.display='none'; document.getElementById('modal-iframe').src=''; }
+function addToWatchlist(movie){
+  if(!watchlist.find(m=>m.title===movie.title)){
+    watchlist.push(movie); localStorage.setItem('weblog_watchlist', JSON.stringify(watchlist)); alert('Added to Watchlist');
+  } else alert('Already in Watchlist');
+}
+renderMovies();
+
+/* ---------- INVITES ---------- */
+function sendInvite(){
+  const val = document.getElementById('invite-input').value;
+  if(!val) return alert('Enter email or phone');
+  alert(`Invite sent to ${val} (mock)`); document.getElementById('invite-input').value='';
+}
+</script>
+</body>
+</html>
