@@ -8,7 +8,7 @@
 <!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-<!-- Firebase -->
+<!-- Firebase (ES modules) -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js";
@@ -25,20 +25,36 @@
   };
 
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+  try { getAnalytics(app); } catch(e){ /* optional */ }
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
 
+  // Expose login/logout to global window (used in inline HTML buttons)
   window.loginWithGoogle = () => {
     signInWithPopup(auth, provider)
       .then(result => {
         const user = result.user;
-        document.getElementById('auth-area').innerHTML = `<span>Hello, ${user.displayName}</span> <button class="btn" onclick="logout()">Logout</button>`;
-        document.getElementById('me-avatar').innerText = user.displayName[0].toUpperCase();
-      }).catch(err => alert(err.message));
+        // Save a minimal local session so app JS (non-module) can read it
+        localStorage.setItem('weblog_social_user', JSON.stringify({
+          uid: user.uid,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          email: user.email
+        }));
+        // reload so the rest of the app initialization picks up the user
+        location.reload();
+      }).catch(err => alert('Google sign-in error: ' + err.message));
   };
 
-  window.logout = () => { signOut(auth).then(()=> location.reload()); };
+  window.logout = () => {
+    signOut(auth).then(()=> {
+      localStorage.removeItem('weblog_social_user');
+      location.reload();
+    }).catch(()=> {
+      localStorage.removeItem('weblog_social_user');
+      location.reload();
+    });
+  };
 </script>
 
 <style>
@@ -52,8 +68,8 @@ h1{margin:0;font-size:20px}
 .meta{font-size:12px;color:var(--muted)}
 .top-actions{display:flex;gap:8px;align-items:center}
 .btn{background:var(--primary);color:#fff;border:0;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
-.layout{display:grid;grid-template-columns:260px 1fr 300px;gap:16px;margin-top:18px}
-@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+.layout{display:grid;grid-template-columns:260px 1fr 320px;gap:16px;margin-top:18px}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}}
 .card{background:var(--card);padding:12px;border-radius:12px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
 .sidebar{display:flex;flex-direction:column;gap:12px}
 .nav button{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;border:0;background:transparent;color:var(--muted);cursor:pointer}
@@ -74,9 +90,10 @@ h1{margin:0;font-size:20px}
 .small{font-size:13px;color:var(--muted)}
 .btn-small{padding:6px 10px;border-radius:8px}
 .modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);justify-content:center;align-items:center}
-.modal-content{position:relative;width:90%;max-width:800px;background:#000;border-radius:12px;overflow:hidden}
-.modal-content iframe{width:100%;height:450px;border:0}
+.modal-content{position:relative;width:90%;max-width:900px;background:#000;border-radius:12px;overflow:hidden}
+.modal-iframe{width:100%;height:60vh;border:0}
 .modal-close{position:absolute;top:10px;right:10px;background:transparent;color:#fff;font-size:20px;border:none;cursor:pointer}
+.footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -96,7 +113,7 @@ h1{margin:0;font-size:20px}
 
   <div class="layout">
     <!-- LEFT SIDEBAR -->
-    <aside class="sidebar card">
+    <aside class="sidebar card" aria-label="left sidebar">
       <div style="display:flex;gap:12px;align-items:center">
         <div class="avatar" id="founder-avatar">AS</div>
         <div>
@@ -104,12 +121,16 @@ h1{margin:0;font-size:20px}
           <div class="small">Founder</div>
         </div>
       </div>
+
       <hr/>
+
       <div class="small">Weather</div>
-      <div id="weather-box" class="card">Loading weather...</div>
+      <div id="weather-box" class="card small">Loading weather...</div>
+
       <div class="small">Football</div>
-      <div id="football-box" class="card">Loading matches...</div>
-      <div class="small">Quick Access</div>
+      <div id="football-box" class="card small">Loading matches...</div>
+
+      <div class="small">Quick Links</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <a class="pill" href="https://facebook.com" target="_blank"><i class="fa-brands fa-facebook"></i> FB</a>
         <a class="pill" href="https://youtube.com" target="_blank"><i class="fa-brands fa-youtube"></i> YT</a>
@@ -120,12 +141,12 @@ h1{margin:0;font-size:20px}
 
     <!-- MAIN -->
     <main>
-      <!-- FEED PANEL -->
-      <section id="panel-feed" class="card">
+      <!-- FEED -->
+      <section id="panel-feed" class="card" aria-label="home feed">
         <h2>Home Feed</h2>
-        <div class="composer">
+        <div class="composer" style="margin-top:8px">
           <div style="display:flex;gap:12px;align-items:flex-start">
-            <div class="avatar" id="me-avatar">U</div>
+            <div class="avatar" id="me-avatar">G</div>
             <div style="flex:1">
               <textarea id="composer-text" placeholder="Share a thought, link or YouTube (paste URL)"></textarea>
               <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
@@ -135,115 +156,377 @@ h1{margin:0;font-size:20px}
             </div>
           </div>
         </div>
+
         <div id="posts-area" style="margin-top:12px"></div>
       </section>
-      
-      <!-- MOVIES PANEL -->
-      <section id="panel-movies" class="card">
+
+      <!-- MOVIES -->
+      <section id="panel-movies" class="card" style="margin-top:14px">
         <h2>Movie Box</h2>
         <input id="movie-search" placeholder="Search movies..." style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);margin-bottom:12px" oninput="renderMovies()" />
         <div class="movies-grid" id="movies-grid"></div>
       </section>
 
-      <!-- MODAL -->
-      <div class="modal" id="movie-modal">
+      <!-- MODAL PLAYER -->
+      <div id="movie-modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal-content">
-          <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
-          <iframe id="modal-iframe" src="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-          <div style="padding:8px;color:white">
-            <button class="btn-small btn" onclick="addToWatchlist(currentMovie)">Add to Watchlist</button>
+          <button class="modal-close" onclick="closeModal()" aria-label="Close player"><i class="fa-solid fa-xmark"></i></button>
+          <iframe id="modal-iframe" class="modal-iframe" src="" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <div style="padding:10px;background:#111;color:#fff;display:flex;gap:8px;align-items:center;justify-content:space-between">
+            <div id="modal-title" style="font-weight:700"></div>
+            <div>
+              <button class="btn-small btn" onclick="addToWatchlist(currentMovie)">Add to Watchlist</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- MONETIZATION -->
-      <section class="card">
+      <!-- MONETIZE -->
+      <section class="card" style="margin-top:14px">
         <h2>Monetize</h2>
-        <button class="btn btn-small">Subscribe Monthly $5</button>
-        <button class="btn btn-small">Subscribe Yearly $50</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-small" onclick="subscribeMock('monthly')">Subscribe Monthly $3.99</button>
+          <button class="btn btn-small" onclick="subscribeMock('yearly')">Subscribe Yearly $39.99</button>
+          <button class="btn btn-small" onclick="simulateEarnings()">Simulate Earnings</button>
+        </div>
+        <div style="margin-top:8px">Balance: $<span id="balance">0.00</span></div>
       </section>
 
       <!-- INVITES -->
-      <section class="card">
+      <section class="card" style="margin-top:14px">
         <h2>Invite Friends</h2>
         <input id="invite-input" placeholder="Email or Phone" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
-        <button class="btn btn-small" onclick="sendInvite()">Send Invite</button>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn" onclick="sendInvite()">Send Invite</button>
+          <button class="ghost" onclick="showWatchlist()">Watchlist</button>
+          <button class="ghost" onclick="openChat()">Open Chat</button>
+        </div>
       </section>
+
+      <div class="footer">© WeBlog — Created by Akin S. Sokpah</div>
     </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar card" aria-label="right sidebar">
+      <div>
+        <div class="small">You</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+          <div class="avatar" id="right-avatar">G</div>
+          <div>
+            <div id="right-name">Guest</div>
+            <div class="small" id="right-username">—</div>
+          </div>
+        </div>
+      </div>
+
+      <hr/>
+
+      <div>
+        <div class="small">Subscription</div>
+        <div style="margin-top:8px">
+          <div id="right-sub" class="pill">No plan</div>
+        </div>
+      </div>
+
+      <hr/>
+
+      <div>
+        <div class="small">Support</div>
+        <div style="margin-top:8px">
+          <a class="pill" href="mailto:support@weblog.example">support@weblog.example</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Chat widget (simple) -->
+<div id="chat-widget" style="position:fixed;right:18px;bottom:18px;width:320px;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);display:none;padding:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><strong>WeChat (demo)</strong><div class="small">Support chat</div></div>
+    <div><button class="ghost" onclick="closeChat()">Close</button></div>
+  </div>
+  <div id="chat-messages" style="max-height:240px;overflow:auto;margin-top:8px"></div>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <input id="chat-input" placeholder="Message" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)"/>
+    <button class="btn" onclick="sendChat()">Send</button>
   </div>
 </div>
 
 <script>
-/* ---------- WEATHER ---------- */
-const weatherBox = document.getElementById('weather-box');
-const WEATHER_API_KEY = '1d9f2c9c33d46a7fdcd720b28a799207';
-function fetchWeather(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`)
-      .then(r=>r.json())
-      .then(data=>weatherBox.innerHTML=`${data.name}: ${data.weather[0].description}, ${data.main.temp}°C`)
-      .catch(e=>weatherBox.innerHTML='Weather unavailable');
-  }, ()=>weatherBox.innerHTML='Location not allowed');
-}
-fetchWeather();
+/* =============================
+   WeBlog Mega single-file app
+   All features wired in:
+   - Firebase Google login (module script above)
+   - Weather: OpenWeatherMap (key provided)
+   - Football: sportmont token used for API calls
+   - Feed/posts, movies watchlist & modal player
+   - Monetize placeholders, invites, chat
+   ============================= */
 
-/* ---------- FOOTBALL ---------- */
-const footballBox = document.getElementById('football-box');
-footballBox.innerHTML='Live football matches coming soon!';
+/* ---------- Config & keys ---------- */
+// Provided keys (injected here)
+const WEATHER_API_KEY = '1d9f2c9c33d46a7fdcd720b28a799207'; // your OpenWeatherMap key
+const SPORTMONT_TOKEN = 'PYTKbDPj45kV7S9p1isr8CIniGQLcpAR5Okps1qraWPZUG2X6vxarTTZyyFe'; // your sportmont token
 
-/* ---------- POSTS ---------- */
-function createPost(){
-  const text = document.getElementById('composer-text').value;
-  const media = document.getElementById('composer-media').value;
-  if(!text && !media) return alert('Add text or media');
-  const postArea = document.getElementById('posts-area');
-  const div = document.createElement('div'); div.className='post';
-  div.innerHTML=`<div><strong>You</strong></div><div>${text}</div>${media?'<img src="'+media+'" style="width:100%;border-radius:8px;margin-top:8px"/>':''}`;
-  postArea.prepend(div);
-  document.getElementById('composer-text').value='';
-  document.getElementById('composer-media').value='';
-}
-
-/* ---------- MOVIES ---------- */
+/* ---------- App state ---------- */
 const MOVIES = [
   {title:'Action Thriller', yt:'https://www.youtube.com/embed/ysz5S6PUM-U'},
   {title:'Sci-Fi Epic', yt:'https://www.youtube.com/embed/2Vv-BfVoq4g'},
-  {title:'Romantic Drama', yt:'https://www.youtube.com/embed/5qap5aO4i9A'}
+  {title:'Romantic Drama', yt:'https://www.youtube.com/embed/5qap5aO4i9A'},
+  {title:'Documentary Preview', yt:'https://www.youtube.com/embed/ysz5S6PUM-U'}
 ];
+
 let currentMovie = null;
-let watchlist = JSON.parse(localStorage.getItem('weblog_watchlist')||'[]');
+let watchlist = JSON.parse(localStorage.getItem('weblog_watchlist') || '[]');
+let posts = JSON.parse(localStorage.getItem('weblog_posts') || '[]');
+let balance = parseFloat(localStorage.getItem('weblog_balance') || '0');
+let sessionUser = JSON.parse(localStorage.getItem('weblog_social_user') || 'null') || null;
+
+/* ---------- Initialization ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  renderUserUI();
+  renderPosts();
+  renderMovies();
+  updateBalanceUI();
+  fetchWeather();
+  fetchFootball();
+});
+
+/* ---------- USER UI ---------- */
+function renderUserUI(){
+  if(sessionUser){
+    document.getElementById('auth-area').innerHTML = `<div style="display:flex;gap:8px;align-items:center"><img src="${sessionUser.photoURL||'https://i.pravatar.cc/40?u='+(sessionUser.uid||'guest')}" alt="" style="width:36px;height:36px;border-radius:50%"/> <div>${escapeHtml(sessionUser.displayName||sessionUser.email||sessionUser.uid)}</div> <button class="ghost" onclick="logout()">Logout</button></div>`;
+    document.getElementById('me-avatar').innerText = (sessionUser.displayName||sessionUser.email||sessionUser.uid)[0].toUpperCase();
+    document.getElementById('right-name').textContent = sessionUser.displayName || 'User';
+    document.getElementById('right-username').textContent = '@' + ((sessionUser.email||sessionUser.uid||'guest').slice(0,12));
+    // set founder seed display
+    document.getElementById('founder-avatar').innerText = 'AS';
+  } else {
+    // show default login button remains injected by Firebase module (or fallback)
+    // nothing to change here
+  }
+}
+
+/* ---------- POSTS ---------- */
+function createPost(){
+  const text = document.getElementById('composer-text').value.trim();
+  const media = document.getElementById('composer-media').value.trim();
+  if(!text && !media) return alert('Add text or media');
+  const post = {
+    id: Date.now(),
+    user: sessionUser ? (sessionUser.displayName || sessionUser.email || sessionUser.uid) : 'Guest',
+    text, media, time: new Date().toISOString()
+  };
+  posts.unshift(post);
+  localStorage.setItem('weblog_posts', JSON.stringify(posts));
+  document.getElementById('composer-text').value = '';
+  document.getElementById('composer-media').value = '';
+  renderPosts();
+}
+function renderPosts(){
+  const area = document.getElementById('posts-area');
+  area.innerHTML = posts.map(p => {
+    return `<div class="post">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${(p.user||'G').split(' ').map(s=>s[0]).slice(0,2).join('')}</div>
+        <div style="flex:1">
+          <div style="font-weight:700">${escapeHtml(p.user)}</div>
+          <div class="small">${new Date(p.time).toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;white-space:pre-wrap">${escapeHtml(p.text)}</div>
+      ${p.media ? renderMedia(p.media) : ''}
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="ghost" onclick="likePost(${p.id})"><i class="fa-regular fa-heart"></i> Like</button>
+        <button class="ghost" onclick="sharePost(${p.id})"><i class="fa-solid fa-share-from-square"></i> Share</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="small">No posts yet — be the first!</div>';
+}
+function renderMedia(url){
+  if(!url) return '';
+  if(url.includes('youtube.com') || url.includes('youtu.be')){
+    const vid = extractYouTubeID(url);
+    if(vid) return `<div style="position:relative;padding-top:56.25%;margin-top:8px"><iframe src="https://www.youtube.com/embed/${vid}" style="position:absolute;left:0;top:0;width:100%;height:100%;border:0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+  }
+  if(url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) return `<div style="margin-top:8px"><img src="${escapeAttr(url)}" style="width:100%;border-radius:8px;object-fit:cover" /></div>`;
+  return `<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(0,0,0,0.03)"><a href="${escapeAttr(url)}" target="_blank">${escapeHtml(url)}</a></div>`;
+}
+function likePost(id){ alert('Liked (demo)'); }
+function sharePost(id){ navigator.clipboard?.writeText(location.href + '#post-' + id); alert('Post link copied'); }
+
+/* ---------- MOVIES (search, modal, watchlist) ---------- */
 function renderMovies(){
-  const query = document.getElementById('movie-search').value.toLowerCase();
-  const grid = document.getElementById('movies-grid'); grid.innerHTML='';
-  MOVIES.filter(m=>m.title.toLowerCase().includes(query)).forEach(m=>{
-    const div = document.createElement('div'); div.className='movie-thumb';
-    div.innerHTML=`<img src="https://placehold.co/400x225/111827/ffffff?text=${encodeURIComponent(m.title)}">
-      <div class="info"><div class="movie-title">${m.title}</div></div>`;
-    div.onclick=()=>openModal(m);
+  const q = document.getElementById('movie-search') ? document.getElementById('movie-search').value.toLowerCase() : '';
+  const grid = document.getElementById('movies-grid'); if(!grid) return;
+  grid.innerHTML = '';
+  MOVIES.filter(m => m.title.toLowerCase().includes(q)).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'movie-thumb';
+    div.innerHTML = `<img src="https://placehold.co/400x225/111827/ffffff?text=${encodeURIComponent(m.title)}" alt="${escapeAttr(m.title)}"><div class="info"><div class="movie-title">${escapeHtml(m.title)}</div></div>`;
+    div.onclick = () => openModal(m);
     grid.appendChild(div);
   });
 }
 function openModal(movie){
   currentMovie = movie;
-  document.getElementById('modal-iframe').src = movie.yt+'?autoplay=1';
-  document.getElementById('movie-modal').style.display='flex';
+  document.getElementById('modal-iframe').src = movie.yt + '?autoplay=1';
+  document.getElementById('modal-title').innerText = movie.title;
+  const modal = document.getElementById('movie-modal');
+  if(modal){ modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
 }
-function closeModal(){ document.getElementById('movie-modal').style.display='none'; document.getElementById('modal-iframe').src=''; }
+function closeModal(){ const modal = document.getElementById('movie-modal'); if(modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); } document.getElementById('modal-iframe').src=''; }
 function addToWatchlist(movie){
-  if(!watchlist.find(m=>m.title===movie.title)){
-    watchlist.push(movie); localStorage.setItem('weblog_watchlist', JSON.stringify(watchlist)); alert('Added to Watchlist');
+  if(!movie) return alert('No movie selected');
+  if(!watchlist.find(m => m.title === movie.title)){
+    watchlist.push(movie);
+    localStorage.setItem('weblog_watchlist', JSON.stringify(watchlist));
+    alert('Added to Watchlist');
   } else alert('Already in Watchlist');
 }
-renderMovies();
+function showWatchlist(){
+  const list = watchlist.map(m => `${m.title}`).join('\n') || 'Your watchlist is empty';
+  alert('Watchlist:\n\n' + list);
+}
+
+/* ---------- WEATHER (OpenWeatherMap) ---------- */
+function fetchWeather(){
+  const box = document.getElementById('weather-box');
+  if(!box) return;
+  if(!navigator.geolocation) { box.innerText = 'Geolocation not available'; return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`)
+      .then(r => r.json())
+      .then(d => {
+        if(d && d.name){
+          box.innerHTML = `<div style="font-weight:700">${escapeHtml(d.name)}</div><div class="small">${escapeHtml(d.weather[0].description)}</div><div style="font-size:18px;font-weight:700">${d.main.temp}°C</div>`;
+        } else box.innerText = 'Weather data unavailable';
+      })
+      .catch(err => { console.error(err); box.innerText = 'Weather unavailable'; });
+  }, err => { box.innerText = 'Location blocked'; });
+}
+
+/* ---------- FOOTBALL (sportmont) ----------
+   We use your sportmont token (provided). The exact endpoint path may differ:
+   replace 'https://api.sportmont.example/v1/matches' with the correct sportmont URL if needed.
+   Token is sent in Authorization header as Bearer.
+*/
+function fetchFootball(){
+  const box = document.getElementById('football-box');
+  if(!box) return;
+  // Using today's date to query matches
+  const today = new Date().toISOString().split('T')[0];
+  // <-- Replace this URL if sportmont uses a different base/path.
+  const endpoint = `https://api.sportmont.com/v1/matches?date=${today}`;
+  fetch(endpoint, {
+    headers: {
+      'Authorization': 'Bearer ' + SPORTMONT_TOKEN,
+      'Accept': 'application/json'
+    }
+  }).then(r => {
+    if(!r.ok) throw new Error('Football API error: ' + r.status);
+    return r.json();
+  }).then(json => {
+    // expects json.matches or similar structure — adapt to your API's response
+    const matches = json.matches || json.data || json.response || [];
+    if(matches.length === 0){
+      box.innerText = 'No matches found for today';
+      return;
+    }
+    box.innerHTML = '';
+    matches.slice(0,8).forEach(m => {
+      // adapt fields depending on sportmont response shape:
+      // sample support for common shapes: {home: {name}, away:{name}, status:{short}}
+      const home = m.home?.name || m.teams?.home?.name || m.teams?.home || m.teams?.home?.teamName || (m.teams && m.teams[0]) || 'Home';
+      const away = m.away?.name || m.teams?.away?.name || m.teams?.away || m.teams?.away?.teamName || (m.teams && m.teams[1]) || 'Away';
+      const status = m.status?.short || m.fixture?.status?.short || m.status || '—';
+      const time = m.fixture?.date ? new Date(m.fixture.date).toLocaleTimeString() : (m.time || 'TBD');
+      const row = document.createElement('div');
+      row.innerHTML = `<strong>${escapeHtml(home)}</strong> vs <strong>${escapeHtml(away)}</strong><br/><small>${escapeHtml(String(time))} — ${escapeHtml(String(status))}</small>`;
+      box.appendChild(row);
+    });
+  }).catch(err => {
+    console.warn('Football fetch failed', err);
+    // Fallback: try a public sample (or show helpful message)
+    box.innerHTML = 'Football data currently unavailable or API needs a different endpoint. See README for how to configure sportmont URL.';
+  });
+}
+
+/* ---------- MONETIZATION (mock) ---------- */
+function subscribeMock(plan){
+  if(!sessionUser) return alert('Please login (Google) to subscribe');
+  localStorage.setItem('weblog_sub_'+(sessionUser.uid||sessionUser.email),'plan:'+plan+':'+new Date().toISOString());
+  document.getElementById('right-sub').textContent = plan;
+  alert('Subscribed to '+plan+' (demo only)');
+}
+function simulateEarnings(){
+  balance = (balance || 0) + (Math.random()*8 + 2);
+  localStorage.setItem('weblog_balance', balance.toFixed(2));
+  updateBalanceUI();
+  alert('Earnings simulated (demo).');
+}
+function updateBalanceUI(){ document.getElementById('balance').textContent = (balance || 0).toFixed(2); }
 
 /* ---------- INVITES ---------- */
 function sendInvite(){
-  const val = document.getElementById('invite-input').value;
-  if(!val) return alert('Enter email or phone');
-  alert(`Invite sent to ${val} (mock)`); document.getElementById('invite-input').value='';
+  const v = document.getElementById('invite-input').value.trim();
+  if(!v) return alert('Enter email or phone');
+  // store mock invite locally
+  const invites = JSON.parse(localStorage.getItem('weblog_invites') || '[]');
+  invites.push({by: sessionUser ? (sessionUser.displayName || sessionUser.email || sessionUser.uid) : 'Guest', to: v, time: new Date().toISOString()});
+  localStorage.setItem('weblog_invites', JSON.stringify(invites));
+  alert('Invite saved (demo). For real invites, integrate email/SMS provider.');
+  document.getElementById('invite-input').value = '';
 }
+
+/* ---------- CHAT widget ---------- */
+function openChat(){ document.getElementById('chat-widget').style.display = 'block'; loadChat(); }
+function closeChat(){ document.getElementById('chat-widget').style.display = 'none'; }
+function sendChat(){
+  const txt = document.getElementById('chat-input').value.trim(); if(!txt) return;
+  const arr = JSON.parse(localStorage.getItem('weblog_chat') || '[]');
+  arr.push({user: sessionUser ? (sessionUser.displayName || sessionUser.email) : 'Guest', msg: txt, time: new Date().toLocaleTimeString()});
+  localStorage.setItem('weblog_chat', JSON.stringify(arr));
+  document.getElementById('chat-input').value = '';
+  loadChat();
+}
+function loadChat(){
+  const arr = JSON.parse(localStorage.getItem('weblog_chat') || '[]');
+  document.getElementById('chat-messages').innerHTML = arr.map(c => `<div class="small"><b>${escapeHtml(c.user)}:</b> ${escapeHtml(c.msg)} <small>${escapeHtml(c.time)}</small></div>`).join('');
+}
+
+/* ---------- Football manual refresh helper ---------- */
+function refreshFootball(){ fetchFootball(); alert('Refreshing football data (demo)'); }
+
+/* ---------- Utilities ---------- */
+function extractYouTubeID(url){
+  try{ const u = new URL(url); if(u.hostname.includes('youtu.be')) return u.pathname.slice(1); if(u.hostname.includes('youtube.com')) return u.searchParams.get('v'); }catch(e){}
+  const m = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/); return m ? m[1] : null;
+}
+function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function escapeAttr(s){ return (s||'').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+
+/* ---------- small helpers to like/share from HTML context ---------- */
+window.createPost = createPost;
+window.renderMovies = renderMovies;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.addToWatchlist = addToWatchlist;
+window.showWatchlist = showWatchlist;
+window.subscribeMock = subscribeMock;
+window.simulateEarnings = simulateEarnings;
+window.sendInvite = sendInvite;
+window.openChat = openChat;
+window.closeChat = closeChat;
+window.sendChat = sendChat;
+window.refreshFootball = refreshFootball;
+
+/* ---------- initial render calls ---------- */
+renderMovies();
+renderPosts();
+updateBalanceUI();
 </script>
 </body>
 </html>
